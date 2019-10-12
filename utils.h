@@ -3,7 +3,7 @@
 
 #include "defines.h"
 
-char directory[PATHSIZE];	
+extern char directory[PATHSIZE];
 
 size_t get_file_size(const char *fpath);
 int prepare_file_to_send(const char *rel_path, size_t *file_size, char *mime_type);

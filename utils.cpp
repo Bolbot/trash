@@ -12,6 +12,8 @@
 #include "defines.h"
 #include "utils.h"
 
+char directory[PATHSIZE];
+
 FILE *_myoutput;
 
 size_t get_file_size(const char *fpath)

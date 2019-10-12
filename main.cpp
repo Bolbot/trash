@@ -17,7 +17,6 @@ extern FILE *_myoutput;
 
 int main(int argc, char **argv)
 {
-	puts("This is sketch #9 - HTTP/1.0 server with multithreaded processing for each connection.\n");
 	_myoutput = stdout;
 
 	setsignals();
