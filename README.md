@@ -4,3 +4,4 @@ Steps from old and working C version to new C++ version that is alas still rejec
 
 1. Same C version, only using newer version of compiler
 2. Same C version, but compiled with C++ compiler
+3. C version now with daemonization in C++ style
