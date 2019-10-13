@@ -122,11 +122,22 @@ void server(const char *desired_ip, const char *desired_port)
 		if(!stored_fd) { std::cerr << "Nowhere to keep connected socket " << client << ", refuse it.\n"; close(client); continue; }
 		else *stored_fd = client;
 
-		pthread_t thread;	int perr;	//	void *thread_ret;
-		if((perr = pthread_create(&thread, NULL, process_client, stored_fd)))
-			std::cerr << "pthread_create fail: " << strerror(perr) << "\n";
-		else if((perr = pthread_detach(thread)))
-			std::cerr << "pthread_detach fail: " << strerror(perr) << "\n";
+		constexpr bool USE_PTHREAD = false;
+
+		if (USE_PTHREAD)
+		{
+			pthread_t thread;	int perr;	//	void *thread_ret;
+			if((perr = pthread_create(&thread, NULL, process_client, stored_fd)))
+				std::cerr << "pthread_create fail: " << strerror(perr) << "\n";
+			else if((perr = pthread_detach(thread)))
+				std::cerr << "pthread_detach fail: " << strerror(perr) << "\n";
+		}
+		else
+		{
+			std::thread thread(process_client, stored_fd);
+			if (thread.joinable())
+				thread.detach();
+		}
 	}
 	shutdown(socket_descriptor, SHUT_RDWR);
 }
