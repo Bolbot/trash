@@ -290,11 +290,15 @@ private:
 	}
 
 public:
-	thread_pool() : terminate_flag{ false },  task_queues(std::thread::hardware_concurrency()),
-			threads(std::thread::hardware_concurrency()), joiner_of_pool_threads{ threads }
+	thread_pool() : terminate_flag{ false },  task_queues(std::thread::hardware_concurrency() - 1),
+			threads(std::thread::hardware_concurrency() - 1), joiner_of_pool_threads{ threads }
 	{
 		try
 		{
+			std::cout << "hardware concurrency is " << std::thread::hardware_concurrency()
+				<< "\nalong with main thread there are " << threads.size() << " worker threads"
+				<< "\neach worker has it's own task queue, so there are " << task_queues.size() << " queues" << std::endl;
+
 			for (auto &i: task_queues)
 				i.reset(new stealing_queue<moveable_task>);
 
