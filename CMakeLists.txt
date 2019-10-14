@@ -9,11 +9,10 @@ find_package(Threads)
 find_package(Boost 1.54 REQUIRED COMPONENTS program_options)
 
 add_library(server server.cpp)
-add_library(response response.cpp)
 add_library(utils utils.cpp)
 add_library(multithreading multithreading.cpp)
 add_executable(final main.cpp)
 
 target_link_libraries(server ${CMAKE_THREAD_LIBS_INIT} multithreading)
 target_link_libraries(utils ${Boost_LIBRARIES} multithreading)
-target_link_libraries(final server utils response)
+target_link_libraries(final server utils)

@@ -17,7 +17,6 @@
 
 #include <boost/program_options.hpp>
 
-#include "defines.h"
 #include "multithreading.h"
 
 extern std::mutex cerr_mutex;

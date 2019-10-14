@@ -9,7 +9,6 @@
 #include <sys/socket.h>
 #include <netinet/in.h>
 
-#include "defines.h"
 #include "server.h"
 #include "utils.h"
 

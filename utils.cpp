@@ -9,7 +9,6 @@
 #include <stdio.h>
 #include <fcntl.h>
 
-#include "defines.h"
 #include "utils.h"
 
 std::mutex cerr_mutex;

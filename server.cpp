@@ -17,12 +17,8 @@
 #include <sys/syscall.h>
 #include <sys/sendfile.h>
 
-#include "response.h"
-#include "defines.h"
 #include "server.h"
 #include "utils.h"
-
-short clients[MAXCLIENTS];
 
 struct addrinfo get_addrinfo_hints() noexcept
 {
@@ -113,58 +109,6 @@ int get_listening_socket() noexcept
 	return socket_fd;
 }
 
-void send_error_response(int status, int socket) // OBSOLETE
-{
-	if(status < 0) return;
-	int sent = send_response(status, 1, "text/html", socket);
-	if(sent == -1) { std::cerr << "Failed to send response to " << socket << "\n"; }
-	if(VERBOSE) std::cerr << "Successfully sent " << status << " status response to " << socket << " socket\n";
-}
-
-int process_accepted_connection(int socket) // OBSOLETE
-{
-	char buffer[BUFSIZ] = {0};
-	ssize_t recieved = recv(socket, buffer, BUFSIZ, MSG_NOSIGNAL);
-	if(recieved < 0) { std::cerr << "Error of recv(): " << strerror(errno); exit(EXIT_FAILURE); }
-	std::cerr << "\t[Recieved " << recieved << " bytes from " << socket << " socket]\n";
-	if(VERBOSE) std::cerr << "Request is following:\n" << buffer << "\n";
-/*
-	char address[PATHSIZE] = {0};
-	short status = parse_request(buffer, address, PATHSIZE);
-	if(VERBOSE) std::cerr << "Status " << status << "\n";
-	
-	if(abs(status) == 200)
-	{
-		if(VERBOSE) std::cerr << "Status 200, requested addres is \'" << address << "\'\n";
-		size_t file_size = 0;		char content_type[MIMELENGTH] = {0};
-		int requested_fd = prepare_file_to_send(address, &file_size, content_type);
-
-		if(requested_fd == -1) { if(status > 0) send_error_response(404, socket); }
-		else
-		{
-			int sent_head = (status > 0) ? send_response(status, file_size, content_type, socket) : 0;
-			ssize_t sent_body = sendfile(socket, requested_fd, NULL, file_size);
-			if(sent_head == -1 || sent_body == -1) std::cerr << "Some error sending successful response to " << socket << "\n";
-			if(VERBOSE) std::cerr << "Sent " << sent_body << "/" << file_size << " of entity body to " << socket << "\n";
-		
-			if(close(requested_fd)) std::cerr << "Fail of closing " << requested_fd << " descriptor\n";
-		}
-	}
-	else send_error_response(status, socket);
-
-	if(close(socket)) { std::cerr << "Error of closing socket " << socket << "\n"; }
-*/	return 0;
-	
-}
-
-void *process_client(void *fd)	// OBSOLETE
-{
-	if(VERBOSE) std::cerr << "\t\tProcess [" << getpid() << "] Thread [" << std::this_thread::get_id() << "] processing socket #" << *(short*)fd << "\n";
-	process_accepted_connection(*(short*)fd);
-	*(short*)fd = 0;
-	return fd;
-}
-
 void process_the_accepted_connection(active_connection client)
 {
 	constexpr size_t buffer_size = 8192;
@@ -194,24 +138,8 @@ void run_server_loop(int master_socket)
 
 	while (true)
 	{
-		constexpr bool OBSOLETE = false;
-		constexpr bool LESS_OBSOLETE = true;
+		constexpr bool OBSOLETE = true;
 		if (OBSOLETE)
-		{
-			int client = accept4(master_socket, NULL, 0, 0 /*SOCK_NONBLOCK*/);
-			if(client == -1) { std::cerr << "accept failed: " << strerror(errno) << "\n"; continue; }
-			if(VERBOSE) std::cerr << "\t[Accepted socket with descriptor " << client << "]\n";
-
-			short *stored_fd = NULL;
-			for(size_t i = 0; i != MAXCLIENTS; ++i) if(!clients[i]) { stored_fd = &clients[i]; break; }
-			if(!stored_fd) { std::cerr << "Nowhere to keep connected socket " << client << ", refuse it.\n"; close(client); continue; }
-			else *stored_fd = client;
-
-			std::thread thread(process_client, stored_fd);
-			if (thread.joinable())
-				thread.detach();
-		}
-		else if (LESS_OBSOLETE)
 		{
 			active_connection connection(master_socket);
 
