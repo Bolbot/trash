@@ -18,6 +18,7 @@
 #include <boost/program_options.hpp>
 
 #include "defines.h"
+#include "multithreading.h"
 
 extern std::mutex cerr_mutex;
 #define LOG_CERROR(x) log_errno((__func__), (__FILE__), (__LINE__), (x))

@@ -190,9 +190,12 @@ void run_server_loop(int master_socket)
 	size_t limit_of_file_descriptors = set_maximal_avaliable_limit_of_fd();
 	std::clog << "Processing at most " << limit_of_file_descriptors << " fd at a time." << std::endl;
 
+	initialize_thread_pool();
+
 	while (true)
 	{
 		constexpr bool OBSOLETE = false;
+		constexpr bool LESS_OBSOLETE = false;
 		if (OBSOLETE)
 		{
 			int client = accept4(master_socket, NULL, 0, 0 /*SOCK_NONBLOCK*/);
@@ -208,7 +211,7 @@ void run_server_loop(int master_socket)
 			if (thread.joinable())
 				thread.detach();
 		}
-		else
+		else if (LESS_OBSOLETE)
 		{
 			active_connection connection(master_socket);
 
@@ -218,6 +221,15 @@ void run_server_loop(int master_socket)
 			std::thread thread(process_the_accepted_connection, std::move(connection));
 			if (thread.joinable())
 				thread.detach();
+		}
+		else
+		{
+			active_connection connection(master_socket);
+
+			if (!connection)
+				continue;
+
+			worker_threads->enqueue_task(process_the_accepted_connection, std::move(connection));
 		}
 	}
 }

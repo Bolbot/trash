@@ -7,3 +7,4 @@ Steps from old and working C version to new C++ version that is alas still rejec
 3. C version now with daemonization in C++ style
 4. C version with C++ daemonization and threads
 5. C++ version with primitive threads-detach routine
+6. C++ version with thread pool

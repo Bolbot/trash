@@ -7,6 +7,7 @@
 #include <regex>
 
 #include "utils.h"
+#include "multithreading.h"
 
 struct addrinfo get_addrinfo_hints() noexcept;
 
