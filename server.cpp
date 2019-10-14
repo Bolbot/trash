@@ -195,7 +195,7 @@ void run_server_loop(int master_socket)
 	while (true)
 	{
 		constexpr bool OBSOLETE = false;
-		constexpr bool LESS_OBSOLETE = false;
+		constexpr bool LESS_OBSOLETE = true;
 		if (OBSOLETE)
 		{
 			int client = accept4(master_socket, NULL, 0, 0 /*SOCK_NONBLOCK*/);
