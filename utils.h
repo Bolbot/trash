@@ -8,6 +8,9 @@
 #include <ctime>
 #include <mutex>
 
+#include <sys/time.h>
+#include <sys/resource.h>
+
 #include <boost/program_options.hpp>
 
 #include "defines.h"
@@ -90,6 +93,8 @@ void set_signals() noexcept;
 time_t current_time_t() noexcept;
 
 std::string time_t_to_string(time_t seconds_since_epoch);
+
+size_t set_maximal_avaliable_limit_of_fd() noexcept;
 
 void atexit_terminator() noexcept;
 

@@ -19,7 +19,9 @@ int main(int argc, char **argv)
 
 	daemonize();
 
-	server(server_ip.data(), server_port.data());
+	int master_socket = get_listening_socket();
+
+	run_server_loop(master_socket);
 
 	return 0;
 }

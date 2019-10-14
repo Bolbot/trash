@@ -24,6 +24,95 @@
 
 short clients[MAXCLIENTS];
 
+struct addrinfo get_addrinfo_hints() noexcept
+{
+	struct addrinfo hints;
+
+	hints.ai_flags = AI_PASSIVE;
+	hints.ai_family = AF_UNSPEC;
+	hints.ai_socktype = SOCK_STREAM;
+	hints.ai_protocol = IPPROTO_TCP;
+	hints.ai_addrlen = 0;
+	hints.ai_addr = nullptr;
+	hints.ai_canonname = nullptr;
+	hints.ai_next = nullptr;
+
+	return hints;
+}
+
+int get_binded_socket(struct addrinfo *address_info) noexcept
+{
+	int socket_fd = -1;
+	bool bind_success = false;
+
+	for (auto it = address_info; it; it = it->ai_next)
+	{
+		socket_fd = socket(it->ai_family, it->ai_socktype, it->ai_protocol);
+		if (socket_fd == -1)
+		{
+			continue;
+		}
+
+		int yes = 1;
+		if (setsockopt(socket_fd, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof(yes)) == -1)
+		{
+			std::lock_guard<std::mutex> lock(cerr_mutex);
+			LOG_CERROR("Program terminates due to setsockopt fail");
+			exit(EXIT_FAILURE);
+		}
+
+		if (bind(socket_fd, it->ai_addr, it->ai_addrlen) == -1)
+		{
+			close(socket_fd);
+			continue;
+		}
+
+		bind_success = true;
+		break;
+	}
+
+	if (bind_success)
+		return socket_fd;
+	else
+		return -1;
+}
+
+int get_listening_socket() noexcept
+{
+	struct addrinfo hints = get_addrinfo_hints();
+	struct addrinfo *address_info;
+
+	int gai_res = getaddrinfo(server_ip.data(), server_port.data(), &hints, &address_info);
+	if (gai_res != 0)
+	{
+		std::lock_guard<std::mutex> lock(cerr_mutex);
+		std::cerr << "Error of getaddrinfo: " << gai_strerror(gai_res) << "\n";
+		exit(EXIT_FAILURE);
+	}
+
+	int socket_fd = get_binded_socket(address_info);
+
+	freeaddrinfo(address_info);
+
+	if (socket_fd == -1)
+	{
+		std::lock_guard<std::mutex> lock(cerr_mutex);
+		std::cerr << "Failed to bind\n";
+		exit(EXIT_FAILURE);
+	}
+
+	if (listen(socket_fd, SOMAXCONN) == -1)
+	{
+		std::lock_guard<std::mutex> lock(cerr_mutex);
+		LOG_CERROR("Program terminates due to listen error");
+		exit(EXIT_FAILURE);
+	}
+
+	std::clog << "Listening master socket fd is " << socket_fd << std::endl;
+
+	return socket_fd;
+}
+
 void send_error_response(int status, int socket)
 {
 	if(status < 0) return;
@@ -75,69 +164,24 @@ void *process_client(void *fd)
 	return fd;
 }
 
-void server(const char *desired_ip, const char *desired_port)
+void run_server_loop(int master_socket)
 {
-	/*	1. Prepare and create socket with commands getaddrinfo() and socket() */
+	size_t limit_of_file_descriptors = set_maximal_avaliable_limit_of_fd();
+	std::clog << "Processing at most " << limit_of_file_descriptors << " fd at a time." << std::endl;
 
-	struct addrinfo hints; bzero((void*)&hints, sizeof(hints));
-	hints.ai_family = AF_UNSPEC;
-	hints.ai_socktype = SOCK_STREAM;
-	hints.ai_flags = AI_PASSIVE;
-
-	struct addrinfo *addr;
-	int gai_res = getaddrinfo(desired_ip, desired_port, &hints, &addr);
-	if(gai_res) { std::cerr << "Failed to getaddrinfo(): " << gai_strerror(gai_res) << ". It's quit.\n"; exit(EXIT_FAILURE); }
-
-	int socket_descriptor = socket(addr->ai_family, addr->ai_socktype, addr->ai_protocol);
-	if(socket_descriptor == -1) { std::cerr << "Failed to get socket(): << " << strerror(errno) << "\n"; exit(EXIT_FAILURE); }
-	if(VERBOSE) std::cerr << "\t[Got master socket_descriptor " << socket_descriptor << "]\n";
-
-	/*	2. Prepare and bind socket with commands setsockopt() and bind() */
-
-	int yes = 1;
-	if(setsockopt(socket_descriptor, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof(yes)) == -1)
-		std::cerr << "Failed to setsockopt() to SO_REUSEADDR: " << strerror(errno) << "\n";
-
-	if(bind(socket_descriptor, addr->ai_addr, addr->ai_addrlen) == -1)
+	while (true)
 	{
-		std::cerr << "Failed to bind() on socket " << socket_descriptor << ": " << strerror(errno) << "\n";
-		exit(EXIT_FAILURE);
-	}
-
-	/*	3. Start listening on socket with command listen()	*/
-	if(listen(socket_descriptor, SOMAXCONN) == -1)
-		std::cerr << "Failed to set master socket listening: " << strerror(errno) << "\n";
-
-	while("true")
-	{
-	/*	4. Accepting incoming connections to nonblocking sockets with command accept4()	*/
-		int client = accept4(socket_descriptor, NULL, 0, 0 /*SOCK_NONBLOCK*/);
+		int client = accept4(master_socket, NULL, 0, 0 /*SOCK_NONBLOCK*/);
 		if(client == -1) { std::cerr << "accept failed: " << strerror(errno) << "\n"; continue; }
 		if(VERBOSE) std::cerr << "\t[Accepted socket with descriptor " << client << "]\n";
-
-	/*	5. Processing HTTP stuff, then closing sockets with command close()	*/
 
 		short *stored_fd = NULL;
 		for(size_t i = 0; i != MAXCLIENTS; ++i) if(!clients[i]) { stored_fd = &clients[i]; break; }
 		if(!stored_fd) { std::cerr << "Nowhere to keep connected socket " << client << ", refuse it.\n"; close(client); continue; }
 		else *stored_fd = client;
 
-		constexpr bool USE_PTHREAD = false;
-
-		if (USE_PTHREAD)
-		{
-			pthread_t thread;	int perr;	//	void *thread_ret;
-			if((perr = pthread_create(&thread, NULL, process_client, stored_fd)))
-				std::cerr << "pthread_create fail: " << strerror(perr) << "\n";
-			else if((perr = pthread_detach(thread)))
-				std::cerr << "pthread_detach fail: " << strerror(perr) << "\n";
-		}
-		else
-		{
-			std::thread thread(process_client, stored_fd);
-			if (thread.joinable())
-				thread.detach();
-		}
+		std::thread thread(process_client, stored_fd);
+		if (thread.joinable())
+			thread.detach();
 	}
-	shutdown(socket_descriptor, SHUT_RDWR);
 }

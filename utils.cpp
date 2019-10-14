@@ -270,6 +270,30 @@ std::string time_t_to_string(time_t seconds_since_epoch)
 	return result;
 }
 
+size_t set_maximal_avaliable_limit_of_fd() noexcept
+{
+	struct rlimit descriptors_limit;
+	if (getrlimit(RLIMIT_NOFILE, &descriptors_limit) == -1)
+	{
+		std::lock_guard<std::mutex> lock(cerr_mutex);
+		LOG_CERROR("getrlimit failed");
+		return 0;
+	}
+
+	rlim_t previous = descriptors_limit.rlim_cur;
+
+	descriptors_limit.rlim_cur = descriptors_limit.rlim_max;
+
+	if (setrlimit(RLIMIT_NOFILE, &descriptors_limit) == -1)
+	{
+		std::lock_guard<std::mutex> lock(cerr_mutex);
+		LOG_CERROR("setrlimit failed");
+		return previous;
+	}
+
+	return descriptors_limit.rlim_cur;
+}
+
 void atexit_terminator() noexcept
 {
 	//terminate_thread_pool();
