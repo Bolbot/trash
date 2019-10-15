@@ -134,7 +134,9 @@ void run_server_loop(int master_socket)
 	size_t limit_of_file_descriptors = set_maximal_avaliable_limit_of_fd();
 	std::clog << "Processing at most " << limit_of_file_descriptors << " fd at a time." << std::endl;
 
-	initialize_thread_pool();
+	//initialize_thread_pool();
+
+	thread_pool the_pool;
 
 	while (true)
 	{
@@ -143,7 +145,9 @@ void run_server_loop(int master_socket)
 		if (!connection)
 			continue;
 
-		worker_threads->enqueue_task(process_the_accepted_connection, std::move(connection));
+		//worker_threads->enqueue_task(process_the_accepted_connection, std::move(connection));
+
+		the_pool.enqueue_task(process_the_accepted_connection, std::move(connection));
 	}
 }
 
