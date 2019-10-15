@@ -321,10 +321,19 @@ public:
 	{
 		moveable_task task{ std::bind(function, std::move(argument)) };
 
-		if (local_tasks_queue)
-			local_tasks_queue->push(std::move(task));
+		constexpr bool inplace_execution = true;
+
+		if (inplace_execution)
+		{
+			function(std::move(argument));
+		}
 		else
-			common_tasks_queue.push(std::move(task));
+		{
+			if (local_tasks_queue)
+				local_tasks_queue->push(std::move(task));
+			else
+				common_tasks_queue.push(std::move(task));
+		}
 	}
 };
 
