@@ -300,7 +300,7 @@ public:
 			threads(std::thread::hardware_concurrency() - 1),
 			joiner_of_pool_threads{ threads }
 	{
-		if (inplace_execution)
+		if (!inplace_execution)
 		{
 			try
 			{
