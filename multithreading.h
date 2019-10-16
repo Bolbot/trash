@@ -292,6 +292,7 @@ private:
 		}
 	}
 
+	const bool inplace_execution = true;
 public:
 	// TODO: fix the stubs in thread_pool constructor
 	thread_pool() : terminate_flag{ false },
@@ -299,25 +300,26 @@ public:
 			threads(std::thread::hardware_concurrency() - 1),
 			joiner_of_pool_threads{ threads }
 	{
-	///*
-		try
+		if (inplace_execution)
 		{
-			std::cout << "thread_pool()\n\t\thardware_concurrency\t" << std::thread::hardware_concurrency()
-				<< "\n\t\tworker threads\t" << threads.size() << "\n\t\tqueues\t" << task_queues.size() << std::endl;
+			try
+			{
+				std::cout << "thread_pool()\n\t\thardware_concurrency\t" << std::thread::hardware_concurrency()
+					<< "\n\t\tworker threads\t" << threads.size() << "\n\t\tqueues\t" << task_queues.size() << std::endl;
 
-			for (auto &i: task_queues)
-				i.reset(new stealing_queue<moveable_task>);
+				for (auto &i: task_queues)
+					i.reset(new stealing_queue<moveable_task>);
 
-			for (size_t i = 0; i != threads.size(); ++i)
-				threads[i] = std::thread(&thread_pool::working_loop, this, i);
-		}
-		catch (...)
-		{
-			terminate_flag.store(true, std::memory_order_release);
-			std::cerr << "thread pool initialization failed" << std::endl;
+				for (size_t i = 0; i != threads.size(); ++i)
+					threads[i] = std::thread(&thread_pool::working_loop, this, i);
+			}
+			catch (...)
+			{
+				terminate_flag.store(true, std::memory_order_release);
+				std::cerr << "thread pool initialization failed" << std::endl;
+			}
 		}
 		std::cout << "thread pool constructor ends here" << std::endl;
-	//*/
 	}
 	~thread_pool()
 	{
@@ -328,7 +330,6 @@ public:
 	template <typename Function, typename Argument>
 	void enqueue_task(Function &&function, Argument &&argument)
 	{
-		constexpr bool inplace_execution = true;
 		if (inplace_execution)
 		{
 			try
