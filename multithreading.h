@@ -299,7 +299,7 @@ public:
 			threads(std::thread::hardware_concurrency() - 1),
 			joiner_of_pool_threads{ threads }
 	{
-	/*
+	///*
 		try
 		{
 			std::cout << "thread_pool()\n\t\thardware_concurrency\t" << std::thread::hardware_concurrency()
@@ -316,7 +316,8 @@ public:
 			terminate_flag.store(true, std::memory_order_release);
 			std::cerr << "thread pool initialization failed" << std::endl;
 		}
-	*/
+		std::cout << "thread pool constructor ends here" << std::endl;
+	//*/
 	}
 	~thread_pool()
 	{
