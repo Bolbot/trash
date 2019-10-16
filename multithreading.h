@@ -295,8 +295,8 @@ private:
 public:
 	// TODO: fix the stubs in thread_pool constructor
 	thread_pool() : terminate_flag{ false },
-			//task_queues(std::thread::hardware_concurrency() - 1),
-			//threads(std::thread::hardware_concurrency() - 1),
+			task_queues(std::thread::hardware_concurrency() - 1),
+			threads(std::thread::hardware_concurrency() - 1),
 			joiner_of_pool_threads{ threads }
 	{
 	/*
