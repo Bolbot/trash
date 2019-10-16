@@ -298,9 +298,8 @@ public:
 	{
 		try
 		{
-			std::cout << "hardware concurrency is " << std::thread::hardware_concurrency()
-				<< "\nalong with main thread there are " << threads.size() << " worker threads"
-				<< "\neach worker has it's own task queue, so there are " << task_queues.size() << " queues" << std::endl;
+			std::cout << "thread_pool()\n\t\thardware_concurrency\t" << std::thread::hardware_concurrency()
+				<< "\n\t\tworker threads\t" << threads.size() << "\n\t\tqueues\t" << task_queues.size() << std::endl;
 
 			for (auto &i: task_queues)
 				i.reset(new stealing_queue<moveable_task>);
@@ -323,10 +322,7 @@ public:
 	template <typename Function, typename Argument>
 	void enqueue_task(Function &&function, Argument &&argument)
 	{
-		moveable_task task{ std::bind(function, std::move(argument)) };
-
 		constexpr bool inplace_execution = true;
-
 		if (inplace_execution)
 		{
 			try
@@ -344,6 +340,8 @@ public:
 		}
 		else
 		{
+			moveable_task task{ std::bind(function, std::move(argument)) };
+
 			if (local_tasks_queue)
 				local_tasks_queue->push(std::move(task));
 			else
