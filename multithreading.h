@@ -181,12 +181,15 @@ private:
 	std::vector<std::thread> &threads;
 public:
 	explicit thread_joiner(std::vector<std::thread> &t): threads(t)
-	{}
+	{
+		std::cout << "thread_joiner()" << std::endl;
+	}
 	~thread_joiner()
 	{
 		for (auto &i: threads)
 			if (i.joinable())
 				i.join();
+		std::cout << "~thread_joiner()" << std::endl;
 	}
 };
 
@@ -314,6 +317,7 @@ public:
 	~thread_pool()
 	{
 		terminate_flag.store(true, std::memory_order_release);
+		std::cout << "thread pool destructor" << std::endl;
 	}
 
 	template <typename Function, typename Argument>
@@ -325,7 +329,18 @@ public:
 
 		if (inplace_execution)
 		{
-			function(std::move(argument));
+			try
+			{
+				function(std::move(argument));
+			}
+			catch (std::exception &e)
+			{
+				std::cerr << "got an exception: " << e.what() << " in enqueue_task\n";
+			}
+			catch (...)
+			{
+				std::cerr << "got an unknown exception in enqueue_task\n";
+			}
 		}
 		else
 		{
