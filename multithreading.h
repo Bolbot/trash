@@ -181,15 +181,12 @@ private:
 	std::vector<std::thread> &threads;
 public:
 	explicit thread_joiner(std::vector<std::thread> &t): threads(t)
-	{
-		std::cout << "thread_joiner()" << std::endl;
-	}
+	{}
 	~thread_joiner()
 	{
 		for (auto &i: threads)
 			if (i.joinable())
 				i.join();
-		std::cout << "~thread_joiner()" << std::endl;
 	}
 };
 
@@ -256,22 +253,22 @@ private:
 		{
 			size_t index = (thread_index + i + 1) % task_queues.size();
 
-			if (task_queues[index]->try_steal(dest))
+			if (task_queues[index] && task_queues[index]->try_steal(dest))
 				return true;
 		}
 
 		return false;
 	}
 
+	const bool inplace_execution = true;
+
 	void working_loop(size_t index)
 	{
 		thread_index = index;
 		local_tasks_queue = task_queues[thread_index].get();
 
-		if (local_tasks_queue)
-			std::cout << "\t#" << std::this_thread::get_id() << " local_tasks_queue = " << local_tasks_queue << std::endl;
-		else
-			std::cout << "\t#" << std::this_thread::get_id() << " local_tasks_queue is nullptr" << std::endl;
+		if (inplace_execution)
+			return;
 
 		while (!terminate_flag.load())
 		{
@@ -295,45 +292,30 @@ private:
 			else
 				std::this_thread::yield();
 		}
-		std::cout << "#" << std::this_thread::get_id() << " finishes" << std::endl;
 	}
-
-	const bool inplace_execution = true;
 public:
-	// TODO: fix the stubs in thread_pool constructor
 	thread_pool() : terminate_flag{ false },
 			task_queues(std::thread::hardware_concurrency() - 1),
 			threads(std::thread::hardware_concurrency() - 1),
 			joiner_of_pool_threads{ threads }
 	{
-		std::cout << "thread_pool constructor begin" << std::endl;
-
 		try
 		{
-			std::cout << "\thardware_concurrency = " << std::thread::hardware_concurrency() << std::endl;
-
 			for (auto &i: task_queues)
-			//	i.reset(new stealing_queue<moveable_task>);
 				i.reset(nullptr);
 
 			for (size_t i = 0; i != threads.size(); ++i)
-			{
 				threads[i] = std::thread(&thread_pool::working_loop, this, i);
-				std::cout << "thread " << (i + 1) << "/" << threads.size() << " initialized" << std::endl;
-			}
 		}
 		catch (...)
 		{
 			terminate_flag.store(true, std::memory_order_release);
 			std::cerr << "thread pool initialization failed" << std::endl;
 		}
-
-		std::cout << "thread_pool constructor end\n" << std::endl;
 	}
 	~thread_pool()
 	{
 		terminate_flag.store(true, std::memory_order_release);
-		std::cout << "thread pool destructor" << std::endl;
 	}
 
 	template <typename Function, typename Argument>
