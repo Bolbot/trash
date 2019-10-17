@@ -333,7 +333,7 @@ public:
 			try
 			{
 				std::cout << "thread_pool()\n\t\thardware_concurrency\t" << std::thread::hardware_concurrency()
-					<< "\n\t\tworker threads\t" << threads.size() << //" --- NO WORKER THREADS ACTUALLY"
+					<< "\n\t\tworker threads\t" << threads.size() //<< " --- NO WORKER THREADS ACTUALLY"
 					<< "\n\t\tqueues\t" << task_queues.size() << " --- NONE ACTUALLY" << std::endl;
 
 			//	for (auto &i: task_queues)
