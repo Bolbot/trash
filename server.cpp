@@ -140,8 +140,6 @@ void run_server_loop(int master_socket)
 
 	while (true)
 	{
-		std::cout << "waiting for connection..." << std::endl;
-
 		active_connection connection(master_socket);
 
 		if (!connection)
@@ -149,11 +147,7 @@ void run_server_loop(int master_socket)
 
 		//worker_threads->enqueue_task(process_the_accepted_connection, std::move(connection));
 
-		std::cout << "accepted connection, enqueueing...\n" << std::endl;
-
 		the_pool.enqueue_task(process_the_accepted_connection, std::move(connection));
-
-		std::cout << "...enqueued connection, next...\n" << std::endl;
 	}
 }
 

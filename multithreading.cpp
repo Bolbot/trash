@@ -1,8 +1,8 @@
 #include "multithreading.h"
 
-thread_local stealing_queue<thread_pool::moveable_task> *thread_pool::local_tasks_queue;
+//thread_local stealing_queue<thread_pool::moveable_task> *thread_pool::local_tasks_queue;
 
-thread_local size_t thread_pool::thread_index;
+//thread_local size_t thread_pool::thread_index;
 
 std::unique_ptr<thread_pool> worker_threads;
 

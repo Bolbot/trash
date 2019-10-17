@@ -238,6 +238,9 @@ private:
 		}
 	};
 
+	const bool inplace_execution = true;
+
+/*
 	std::atomic<bool> terminate_flag;
 	mt_safe_queue<moveable_task> common_tasks_queue;
 	std::vector<std::unique_ptr<stealing_queue<moveable_task>>> task_queues;
@@ -259,8 +262,6 @@ private:
 
 		return false;
 	}
-
-	const bool inplace_execution = true;
 
 	void working_loop(size_t index)
 	{
@@ -293,8 +294,11 @@ private:
 				std::this_thread::yield();
 		}
 	}
+*/
 public:
-	thread_pool() : terminate_flag{ false },
+	thread_pool()
+	{}/*
+		: terminate_flag{ false },
 			task_queues(std::thread::hardware_concurrency() - 1),
 			threads(std::thread::hardware_concurrency() - 1),
 			joiner_of_pool_threads{ threads }
@@ -313,9 +317,10 @@ public:
 			std::cerr << "thread pool initialization failed" << std::endl;
 		}
 	}
+	*/
 	~thread_pool()
 	{
-		terminate_flag.store(true, std::memory_order_release);
+	//	terminate_flag.store(true, std::memory_order_release);
 	}
 
 	template <typename Function, typename Argument>
@@ -336,7 +341,7 @@ public:
 				std::cerr << "got an unknown exception in enqueue_task\n";
 			}
 		}
-		else
+	/*	else
 		{
 			moveable_task task{ std::bind(function, std::move(argument)) };
 
@@ -345,6 +350,7 @@ public:
 			else
 				common_tasks_queue.push(std::move(task));
 		}
+	*/
 	}
 };
 
