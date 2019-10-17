@@ -319,6 +319,26 @@ public:
 				std::cerr << "thread pool initialization failed" << std::endl;
 			}
 		}
+		else
+		{
+			try
+			{
+				std::cout << "thread_pool()\n\t\thardware_concurrency\t" << std::thread::hardware_concurrency()
+					<< "\n\t\tworker threads\t" << threads.size() << " --- NO WORKER THREADS ACTUALLY"
+					<< "\n\t\tqueues\t" << task_queues.size() << std::endl;
+
+				for (auto &i: task_queues)
+					i.reset(new stealing_queue<moveable_task>);
+
+			//	for (size_t i = 0; i != threads.size(); ++i)
+			//		threads[i] = std::thread(&thread_pool::working_loop, this, i);
+			}
+			catch (...)
+			{
+				terminate_flag.store(true, std::memory_order_release);
+				std::cerr << "thread pool initialization failed" << std::endl;
+			}
+		}
 		std::cout << "thread pool constructor ends here" << std::endl;
 	}
 	~thread_pool()
