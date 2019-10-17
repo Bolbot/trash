@@ -266,7 +266,16 @@ private:
 	void working_loop(size_t index)
 	{
 		thread_index = index;
-		local_tasks_queue = task_queues[thread_index].get();
+		if (task_queues[thread_index])
+		{
+			local_tasks_queue = task_queues[thread_index].get();
+			std::cout << "\t#" << std::this_thread::get_id() << " local_tasks_queue = " << local_tasks_queue << std::endl;
+		}
+		else
+		{
+			local_tasks_queue = nullptr;
+			std::cout << "\t#" << std::this_thread::get_id() << " local_tasks_queue is nullptr" << std::endl;
+		}
 
 		while (!terminate_flag.load(std::memory_order_acquire))
 		{
@@ -324,14 +333,14 @@ public:
 			try
 			{
 				std::cout << "thread_pool()\n\t\thardware_concurrency\t" << std::thread::hardware_concurrency()
-					<< "\n\t\tworker threads\t" << threads.size() << " --- NO WORKER THREADS ACTUALLY"
-					<< "\n\t\tqueues\t" << task_queues.size() << std::endl;
+					<< "\n\t\tworker threads\t" << threads.size() << //" --- NO WORKER THREADS ACTUALLY"
+					<< "\n\t\tqueues\t" << task_queues.size() << " --- NONE ACTUALLY" << std::endl;
 
-				for (auto &i: task_queues)
-					i.reset(new stealing_queue<moveable_task>);
+			//	for (auto &i: task_queues)
+			//		i.reset(new stealing_queue<moveable_task>);
 
-			//	for (size_t i = 0; i != threads.size(); ++i)
-			//		threads[i] = std::thread(&thread_pool::working_loop, this, i);
+				for (size_t i = 0; i != threads.size(); ++i)
+					threads[i] = std::thread(&thread_pool::working_loop, this, i);
 			}
 			catch (...)
 			{
