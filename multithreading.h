@@ -266,18 +266,14 @@ private:
 	void working_loop(size_t index)
 	{
 		thread_index = index;
-		if (task_queues[thread_index])
-		{
-			local_tasks_queue = task_queues[thread_index].get();
-			std::cout << "\t#" << std::this_thread::get_id() << " local_tasks_queue = " << local_tasks_queue << std::endl;
-		}
-		else
-		{
-			local_tasks_queue = nullptr;
-			std::cout << "\t#" << std::this_thread::get_id() << " local_tasks_queue is nullptr" << std::endl;
-		}
+		local_tasks_queue = task_queues[thread_index].get();
 
-		while (!terminate_flag.load(std::memory_order_acquire))
+		if (local_tasks_queue)
+			std::cout << "\t#" << std::this_thread::get_id() << " local_tasks_queue = " << local_tasks_queue << std::endl;
+		else
+			std::cout << "\t#" << std::this_thread::get_id() << " local_tasks_queue is nullptr" << std::endl;
+
+		while (!terminate_flag.load())
 		{
 			moveable_task task;
 
@@ -299,6 +295,7 @@ private:
 			else
 				std::this_thread::yield();
 		}
+		std::cout << "#" << std::this_thread::get_id() << " finishes" << std::endl;
 	}
 
 	const bool inplace_execution = true;
@@ -309,46 +306,29 @@ public:
 			threads(std::thread::hardware_concurrency() - 1),
 			joiner_of_pool_threads{ threads }
 	{
-		if (!inplace_execution)
+		std::cout << "thread_pool constructor begin" << std::endl;
+
+		try
 		{
-			try
-			{
-				std::cout << "thread_pool()\n\t\thardware_concurrency\t" << std::thread::hardware_concurrency()
-					<< "\n\t\tworker threads\t" << threads.size() << "\n\t\tqueues\t" << task_queues.size() << std::endl;
+			std::cout << "\thardware_concurrency = " << std::thread::hardware_concurrency() << std::endl;
 
-				for (auto &i: task_queues)
-					i.reset(new stealing_queue<moveable_task>);
+			for (auto &i: task_queues)
+			//	i.reset(new stealing_queue<moveable_task>);
+				i.reset(nullptr);
 
-				for (size_t i = 0; i != threads.size(); ++i)
-					threads[i] = std::thread(&thread_pool::working_loop, this, i);
-			}
-			catch (...)
+			for (size_t i = 0; i != threads.size(); ++i)
 			{
-				terminate_flag.store(true, std::memory_order_release);
-				std::cerr << "thread pool initialization failed" << std::endl;
+				threads[i] = std::thread(&thread_pool::working_loop, this, i);
+				std::cout << "thread " << (i + 1) << "/" << threads.size() << " initialized" << std::endl;
 			}
 		}
-		else
+		catch (...)
 		{
-			try
-			{
-				std::cout << "thread_pool()\n\t\thardware_concurrency\t" << std::thread::hardware_concurrency()
-					<< "\n\t\tworker threads\t" << threads.size() //<< " --- NO WORKER THREADS ACTUALLY"
-					<< "\n\t\tqueues\t" << task_queues.size() << " --- NONE ACTUALLY" << std::endl;
-
-			//	for (auto &i: task_queues)
-			//		i.reset(new stealing_queue<moveable_task>);
-
-				for (size_t i = 0; i != threads.size(); ++i)
-					threads[i] = std::thread(&thread_pool::working_loop, this, i);
-			}
-			catch (...)
-			{
-				terminate_flag.store(true, std::memory_order_release);
-				std::cerr << "thread pool initialization failed" << std::endl;
-			}
+			terminate_flag.store(true, std::memory_order_release);
+			std::cerr << "thread pool initialization failed" << std::endl;
 		}
-		std::cout << "thread pool constructor ends here" << std::endl;
+
+		std::cout << "thread_pool constructor end\n" << std::endl;
 	}
 	~thread_pool()
 	{

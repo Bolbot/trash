@@ -140,6 +140,8 @@ void run_server_loop(int master_socket)
 
 	while (true)
 	{
+		std::cout << "waiting for connection..." << std::endl;
+
 		active_connection connection(master_socket);
 
 		if (!connection)
