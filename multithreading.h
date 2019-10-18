@@ -650,6 +650,274 @@ namespace dummy
 	};
 }
 
+namespace concrete
+{
+/*
+	class mt_safe_queue final
+	{
+	private:
+		std::queue<std::shared_ptr<active_connection>> queue;
+		mutable std::mutex mutex;
+		std::condition_variable condv;
+	public:
+		mt_safe_queue() = default;
+		mt_safe_queue(const mt_safe_queue &) = delete;
+		mt_safe_queue &operator=(const mt_safe_queue &) = delete;
+
+		void push(active_connection &&element)
+		{
+			std::shared_ptr<active_connection> pointer = std::make_shared<active_connection>(std::move(element));
+
+			std::lock_guard<std::mutex> lock(mutex);
+			queue.push(std::move(pointer));
+		}
+
+		bool try_pop(active_connection &dest)
+		{
+			std::lock_guard<std::mutex> lock(mutex);
+
+			if (queue.empty())
+				return false;
+
+			dest = std::move(*queue.front());
+			queue.pop();
+			return true;
+		}
+
+		std::shared_ptr<active_connection> try_pop()
+		{
+			std::lock_guard<std::mutex> lock(mutex);
+
+			if (queue.empty())
+				return nullptr;
+
+			std::shared_ptr<active_connection> pointer = std::move(queue.front());
+			queue.pop();
+			return pointer;
+		}
+
+		void wait_and_pop(active_connection &dest)
+		{
+			std::unique_lock<active_connection> lock(mutex);
+			if (queue.empty())
+				condv.wait(lock, [this]() { return !queue.empty(); });
+
+			dest = std::move(*queue.front());
+			queue.pop();
+		}
+
+		std::shared_ptr<active_connection> wait_and_pop()
+		{
+			std::unique_lock<active_connection> lock(mutex);
+			if (queue.empty())
+				condv.wait(lock, [this]() { return !queue.empty(); });
+
+			std::shared_ptr<active_connection> pointer = std::move(queue.front());
+			queue.pop();
+			return pointer;
+		}
+
+		bool empty() const
+		{
+			std::lock_guard<std::mutex> lock(mutex);
+			return queue.empty();
+		}
+	};
+
+	class stealing_queue final
+	{
+	private:
+		std::deque<std::shared_ptr<active_connection>> deque;
+		mutable std::mutex mutex;
+		std::condition_variable condv;
+	public:
+		stealing_queue() = default;
+		stealing_queue(const stealing_queue &) = delete;
+		stealing_queue &operator=(const stealing_queue &) = delete;
+
+		void push(active_connection &&element)
+		{
+			std::shared_ptr<active_connection> ptr = std::make_shared<active_connection>(std::move(element));
+
+			std::lock_guard<std::mutex> lock(mutex);
+			deque.push_front(std::move(ptr));
+			condv.notify_one();
+		}
+
+		bool try_pop(active_connection &dest)
+		{
+			std::lock_guard<std::mutex> lock(mutex);
+			if (deque.empty())
+				return false;
+
+			dest = std::move(*deque.front());
+			deque.pop_front();
+			return true;
+		}
+		std::shared_ptr<active_connection> try_pop()
+		{
+			std::lock_guard<std::mutex> lock(mutex);
+			if (deque.empty())
+				return nullptr;
+
+			std::shared_ptr<active_connection> ptr{ std::move(deque.front()) };
+			deque.pop_front();
+			return ptr;
+		}
+		void wait_and_pop(active_connection &dest)
+		{
+			std::unique_lock<std::mutex> lock(mutex);
+			if (deque.empty())
+				condv.wait(lock, [this]() { return !deque.empty(); });
+
+			dest = std::move(*deque.front());
+			deque.pop_front();
+		}
+		std::shared_ptr<active_connection> wait_and_pop()
+		{
+			std::unique_lock<std::mutex> lock(mutex);
+			if (deque.empty())
+				condv.wait(lock, [this]() { return !deque.empty(); });
+
+			std::shared_ptr<active_connection> ptr = std::move(*deque.front());
+			deque.pop_front();
+			return ptr;
+		}
+
+		bool try_steal(active_connection &dest)
+		{
+			std::lock_guard<std::mutex> lock(mutex);
+			if (deque.empty())
+				return false;
+
+			dest = std::move(*deque.back());
+			deque.pop_back();
+			return true;
+		}
+		std::shared_ptr<active_connection> try_steal()
+		{
+			std::lock_guard<std::mutex> lock(mutex);
+			if (deque.empty())
+				return nullptr;
+
+			std::shared_ptr<active_connection> ptr = std::move(deque.back());
+			deque.pop_back();
+			return ptr;
+		}
+
+		bool empty() const
+		{
+			std::lock_guard<std::mutex> lock(mutex);
+			return deque.empty();
+		}	
+	};
+
+	class thread_joiner final
+	{
+	private:
+		std::vector<std::thread> &threads;
+	public:
+		explicit thread_joiner(std::vector<std::thread> &t): threads(t)
+		{}
+		~thread_joiner()
+		{
+			for (auto &i: threads)
+				if (i.joinable())
+					i.join();
+		}
+	};
+
+	class thread_pool final
+	{
+	private:
+		std::atomic<bool> terminate_flag;
+		mt_safe_queue common_tasks_queue;
+		std::vector<std::unique_ptr<stealing_queue>> task_queues;
+		static thread_local stealing_queue *local_tasks_queue;
+		static thread_local size_t thread_index;
+
+		std::vector<std::thread> threads;
+		thread_joiner joiner_of_pool_threads;
+
+		bool try_steal(active_connection &dest)
+		{
+			for (size_t i = 0; i != task_queues.size(); ++i)
+			{
+				size_t index = (thread_index + i + 1) % task_queues.size();
+
+				if (task_queues[index] && task_queues[index]->try_steal(dest))
+					return true;
+			}
+
+			return false;
+		}
+
+		void working_loop(size_t index)
+		{
+			thread_index = index;
+			local_tasks_queue = task_queues[thread_index].get();
+
+			while (!terminate_flag.load())
+			{
+				active_connection connection;
+
+				if ((local_tasks_queue && local_tasks_queue->try_pop(connection))
+					|| common_tasks_queue.try_pop(connection) || try_steal(connection))
+				{
+					try
+					{
+						process_the_accepted_connection(std::move(connection));
+					}
+					catch (std::exception &e)
+					{
+						std::cerr << std::this_thread::get_id() << " got an exception: " << e.what() << std::endl;
+					}
+					catch (...)
+					{
+						std::cerr << std::this_thread::get_id() << " got unknown exception thrown" << std::endl;
+					}
+				}
+				else
+					std::this_thread::yield();
+			}
+		}
+
+	public:
+		thread_pool() : terminate_flag{ false },
+				task_queues(std::thread::hardware_concurrency() - 1),
+				threads(std::thread::hardware_concurrency() - 1),
+				joiner_of_pool_threads{ threads }
+		{
+			try
+			{
+				for (auto &i: task_queues)
+					i.reset(new stealing_queue<active_connection>);
+
+				for (size_t i = 0; i != threads.size(); ++i)
+					threads[i] = std::thread(&thread_pool::working_loop, this, i);
+			}
+			catch (...)
+			{
+				terminate_flag.store(true, std::memory_order_release);
+				std::cerr << "thread pool initialization failed" << std::endl;
+			}
+		}
+		~thread_pool()
+		{
+			terminate_flag.store(true, std::memory_order_release);
+		}
+
+		void enqueue_task(active_connection &&connection)
+		{
+			if (local_tasks_queue)
+				local_tasks_queue->push(std::move(connection));
+			else
+				common_tasks_queue.push(std::move(connection));
+		}
+	};
+*/
+}
+
 using namespace dummy;
 
 #endif

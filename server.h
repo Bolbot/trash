@@ -63,6 +63,9 @@ public:
 	explicit active_connection(int master_socket) : fd{ new implementation(master_socket) }
 	{}
 
+	active_connection() : fd{ nullptr }
+	{}
+
 	active_connection(const active_connection &other) : fd{ other.fd }
 	{}
 	active_connection &operator=(const active_connection &other)
@@ -88,12 +91,12 @@ public:
 
 	explicit operator bool() const noexcept
 	{
-		return (*fd != -1);
+		return (fd && (*fd != -1));
 	}
 
 	operator int() const noexcept
 	{
-		return *fd;
+		return ((fd) ? *fd : -1);
 	}
 };
 
