@@ -2,21 +2,6 @@
 #define _GNU_SOURCE
 #endif
 
-#include <time.h>
-#include <netdb.h>
-#include <ctype.h>
-#include <stdio.h>
-#include <errno.h>
-#include <stdlib.h>
-#include <string.h>
-#include <unistd.h>
-#include <pthread.h>
-#include <sys/types.h>
-#include <sys/socket.h>
-#include <netinet/in.h>
-#include <sys/syscall.h>
-#include <sys/sendfile.h>
-
 #include "server.h"
 #include "utils.h"
 
@@ -147,7 +132,9 @@ void run_server_loop(int master_socket)
 
 		//worker_threads->enqueue_task(process_the_accepted_connection, std::move(connection));
 
-		the_pool.enqueue_task(process_the_accepted_connection, std::move(connection));
+		the_pool.enqueue_task(
+		//			process_the_accepted_connection, 
+					std::move(connection));
 	}
 }
 

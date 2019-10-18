@@ -11,12 +11,6 @@
 
 #include "utils.h"
 
-std::mutex cerr_mutex;
-
-std::string server_ip;
-std::string server_port;
-std::string server_directory;
-
 void parse_program_options(int argc, char **argv) noexcept
 {
 	// rather than getopt this version is using boost::program_options
@@ -123,29 +117,6 @@ void daemonize() noexcept
 		<< "\nServer directory " << server_directory << std::endl;
 }
 
-constexpr char log_redirector::log_file_out_name[];
-constexpr char log_redirector::log_file_err_name[];
-constexpr char log_redirector::log_file_log_name[];
-
-void log_errno(const char *function, const char *file, size_t line, const char *message) noexcept
-{
-	// cerr_mutex is locked before call to this function
-	constexpr size_t buffer_size = 1024;
-	char buffer[buffer_size] = { 0 };
-
-	std::cerr << "Error in " << function << " (" << file << ", line " << line << ")";
-
-	if (strerror_r(errno, buffer, buffer_size) != 0)
-	{
-		std::cerr << " - failed to decipher errno " << errno << "\n";
-	}
-	else
-	{
-		std::cerr << " - " << buffer << "\n";
-	}
-	std::cerr << "Therefore " << message << "\n\n";
-}
-
 size_t get_file_size(const char *fpath)
 {
 	size_t res = 0;
@@ -226,42 +197,6 @@ void set_signals() noexcept
 	set_signal(SIGUSR2, sa);
 }
 
-std::string time_t_to_string(time_t seconds_since_epoch)
-{
-	struct tm time_now;
-	tzset();
-	struct tm *ret_val = localtime_r(&seconds_since_epoch, &time_now);
-	if (ret_val != &time_now)
-	{
-		std::lock_guard<std::mutex> lock(cerr_mutex);
-		LOG_CERROR("requested data-string will be empty due to fail of localtime_r");
-		return "";
-	}
-
-	const char *day_of_week[7] = { "Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat" };
-	const char *month[12] = { "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec" };
-
-	constexpr size_t date_max_length = 512;
-	char date_string[date_max_length];
-
-	const char format_string[] = ", %d  %Y %T GMT";
-	size_t strftime_res = strftime(date_string, date_max_length, format_string, &time_now);
-	if (strftime_res == 0)
-	{
-		std::lock_guard<std::mutex> lock(cerr_mutex);
-		LOG_CERROR("requested data-string will be empty due to fail of strftime_res");
-		return "";
-	}
-
-	std::string result;
-	result += day_of_week[time_now.tm_wday];
-	result += date_string;
-	constexpr size_t month_position = 8;
-	result.insert(month_position, month[time_now.tm_mon]);
-
-	return result;
-}
-
 size_t set_maximal_avaliable_limit_of_fd() noexcept
 {
 	struct rlimit descriptors_limit;
@@ -285,57 +220,6 @@ size_t set_maximal_avaliable_limit_of_fd() noexcept
 
 	return descriptors_limit.rlim_cur;
 }
-
-void checked_pclose(FILE *closable) noexcept
-{
-	if (pclose(closable) == -1)
-	{
-		{
-			std::lock_guard<std::mutex> lock(cerr_mutex);
-			LOG_CERROR("failed to pclose the popened file");
-		}
-
-		int descriptor = fileno(closable);
-		if (descriptor != -1)
-		{
-			std::lock_guard<std::mutex> lock(cerr_mutex);
-			std::cerr << "File with descriptor " << descriptor << " wasn't pclosed in proper way.\n";
-		}
-	}
-}
-
-std::string popen_reader(const char *command)
-{
-	using FILE_pointer = std::unique_ptr<FILE, void (*)(FILE *)>;
-
-	FILE_pointer source = FILE_pointer(popen(command, "r"), &checked_pclose);
-
-	if (!source)
-	{
-		std::lock_guard<std::mutex> lock(cerr_mutex);
-		LOG_CERROR("failed to popen the file");
-		return std::string{};
-	}
-
-	constexpr size_t buffer_size = 1024;
-	char buffer[buffer_size];
-
-	rewind(source.get());
-	if (!fgets(buffer, buffer_size, source.get()))
-	{
-		std::lock_guard<std::mutex> lock(cerr_mutex);
-		LOG_CERROR("fgets failed so popen_reader returns \"\" (empty result)");
-		return std::string{};
-	}
-
-	return std::string{ buffer };
-}
-
-time_t current_time_t() noexcept
-{
-	return std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
-}
-
 
 void atexit_terminator() noexcept
 {
