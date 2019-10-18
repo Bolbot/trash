@@ -310,8 +310,8 @@ public:
 		//	for (auto &i: task_queues)
 		//		i.reset(nullptr);
 
-			for (size_t i = 0; i != threads.size(); ++i)
-				threads[i] = std::thread(&thread_pool::working_loop, this, i);
+		//	for (size_t i = 0; i != threads.size(); ++i)
+		//		threads[i] = std::thread(&thread_pool::working_loop, this, i);
 		}
 		catch (...)
 		{
