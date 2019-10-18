@@ -197,8 +197,6 @@ void signal_handler(int signal_number) noexcept
 		std::clog << "Interrupted by signal " << signal_number << ": " << strsignal(signal_number)
 			<< "\nFinishing the work and shutting the server.\n";
 
-		terminate_thread_pool();
-
 		exit(EXIT_SUCCESS);
 	}
 }
@@ -341,14 +339,11 @@ time_t current_time_t() noexcept
 
 void atexit_terminator() noexcept
 {
-	terminate_thread_pool();
-
 	std::clog << "Exiting. " << time_t_to_string(current_time_t()) << std::endl;
 }
 
 [[noreturn]] void terminate_handler() noexcept
 {
-	terminate_thread_pool();
 	std::clog << time_t_to_string(current_time_t()) << std::endl;
 
 	std::exception_ptr current = std::current_exception();
