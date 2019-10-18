@@ -240,17 +240,16 @@ private:
 
 	const bool inplace_execution = true;
 
-/*
 	std::atomic<bool> terminate_flag;
 	mt_safe_queue<moveable_task> common_tasks_queue;
-	std::vector<std::unique_ptr<stealing_queue<moveable_task>>> task_queues;
-	static thread_local stealing_queue<moveable_task> *local_tasks_queue;
-	static thread_local size_t thread_index;
+//	std::vector<std::unique_ptr<stealing_queue<moveable_task>>> task_queues;
+//	static thread_local stealing_queue<moveable_task> *local_tasks_queue;
+//	static thread_local size_t thread_index;
 
 	std::vector<std::thread> threads;
 	thread_joiner joiner_of_pool_threads;
 
-	bool try_steal(moveable_task &dest)
+/*	bool try_steal(moveable_task &dest)
 	{
 		for (size_t i = 0; i != task_queues.size(); ++i)
 		{
@@ -262,11 +261,12 @@ private:
 
 		return false;
 	}
-
+*/
 	void working_loop(size_t index)
 	{
-		thread_index = index;
-		local_tasks_queue = task_queues[thread_index].get();
+//		thread_index = index;
+//		local_tasks_queue = task_queues[thread_index].get();
+		std::cout << "#" << std::this_thread::get_id() << " got index " << index << std::endl;
 
 		if (inplace_execution)
 			return;
@@ -275,7 +275,11 @@ private:
 		{
 			moveable_task task;
 
-			if ((local_tasks_queue && local_tasks_queue->try_pop(task)) || common_tasks_queue.try_pop(task) || try_steal(task))
+			if (
+			//	(local_tasks_queue && local_tasks_queue->try_pop(task)) ||
+				common_tasks_queue.try_pop(task)
+			//	|| try_steal(task)
+			)
 			{
 				try
 				{
@@ -294,19 +298,17 @@ private:
 				std::this_thread::yield();
 		}
 	}
-*/
+
 public:
-	thread_pool()
-	{}/*
-		: terminate_flag{ false },
-			task_queues(std::thread::hardware_concurrency() - 1),
+	thread_pool() : terminate_flag{ false },
+	//		task_queues(std::thread::hardware_concurrency() - 1),
 			threads(std::thread::hardware_concurrency() - 1),
 			joiner_of_pool_threads{ threads }
 	{
 		try
 		{
-			for (auto &i: task_queues)
-				i.reset(nullptr);
+		//	for (auto &i: task_queues)
+		//		i.reset(nullptr);
 
 			for (size_t i = 0; i != threads.size(); ++i)
 				threads[i] = std::thread(&thread_pool::working_loop, this, i);
@@ -317,10 +319,9 @@ public:
 			std::cerr << "thread pool initialization failed" << std::endl;
 		}
 	}
-	*/
 	~thread_pool()
 	{
-	//	terminate_flag.store(true, std::memory_order_release);
+		terminate_flag.store(true, std::memory_order_release);
 	}
 
 	template <typename Function, typename Argument>
