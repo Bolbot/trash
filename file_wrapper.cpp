@@ -37,8 +37,8 @@ std::string popen_reader(const char *command)
 	constexpr size_t buffer_size = 1024;
 	char buffer[buffer_size];
 
-	rewind(source.get());
-	if (!fgets(buffer, buffer_size, source.get()))
+	rewind(source/*.get()*/);
+	if (!fgets(buffer, buffer_size, source/*.get()*/))
 	{
 		checked_pclose(source);
 		std::lock_guard<std::mutex> lock(cerr_mutex);
