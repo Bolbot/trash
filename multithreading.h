@@ -650,6 +650,6 @@ namespace dummy
 	};
 }
 
-//using namespace dummy;
+using namespace dummy;
 
 #endif
