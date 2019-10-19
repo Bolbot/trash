@@ -20,12 +20,15 @@ void checked_pclose(FILE *closable) noexcept
 
 std::string popen_reader(const char *command)
 {
-	using FILE_pointer = std::unique_ptr<FILE, void (*)(FILE *)>;
+//	using FILE_pointer = std::unique_ptr<FILE, void (*)(FILE *)>;
 
-	FILE_pointer source = FILE_pointer(popen(command, "r"), &checked_pclose);
+//	FILE_pointer source = FILE_pointer(popen(command, "r"), &checked_pclose);
+
+	FILE *source = popen(command, "r");
 
 	if (!source)
 	{
+		checked_pclose(source);
 		std::lock_guard<std::mutex> lock(cerr_mutex);
 		LOG_CERROR("failed to popen the file");
 		return std::string{};
@@ -37,10 +40,13 @@ std::string popen_reader(const char *command)
 	rewind(source.get());
 	if (!fgets(buffer, buffer_size, source.get()))
 	{
+		checked_pclose(source);
 		std::lock_guard<std::mutex> lock(cerr_mutex);
 		LOG_CERROR("fgets failed so popen_reader returns \"\" (empty result)");
 		return std::string{};
 	}
+
+	checked_pclose(source);
 
 	return std::string{ buffer };
 }
