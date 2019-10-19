@@ -191,7 +191,7 @@ void set_signals() noexcept
 	set_signal(SIGINT, sa);
 	set_signal(SIGHUP, sa);
 	set_signal(SIGTERM, sa);
-	set_signal(SIGCHLD, sa);
+	//set_signal(SIGCHLD, sa);	// is this the reason of errno 10 ?
 	set_signal(SIGQUIT, sa);
 	set_signal(SIGUSR1, sa);
 	set_signal(SIGUSR2, sa);

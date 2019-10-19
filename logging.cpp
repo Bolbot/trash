@@ -32,8 +32,6 @@ void log_errno(const char *function, const char *file, size_t line, const char *
 		std::cerr << buffer << "\n";
 	}
 
-	std::cout << "using XSI strerror_r, return type is " << typeid(decltype(strerror_r(actual_errno, buffer, buffer_size))).name() << std::endl;
-
 #elif defined(_GNU_SOURCE)
 
 	const char *strerror_res = strerror_r(actual_errno, buffer, buffer_size);
@@ -45,8 +43,6 @@ void log_errno(const char *function, const char *file, size_t line, const char *
 	{
 		std::cerr << "(failed to decipher)\n";
 	}
-
-	std::cout << "using GNU strerror_r, return type is " << typeid(decltype(strerror_r(actual_errno, buffer, buffer_size))).name() << std::endl;
 
 #else
 
